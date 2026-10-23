@@ -40,6 +40,16 @@ O carregamento de mapas é interativo, sem prefetch ou recurso offline. Há troc
 
 ## Premissas do modelo sintético
 
+### Telemetria demonstrativa
+
+`telemetry.ts` gera posição GPS, posição local, velocidade física, rumo, estado e horário por máquina. O `useTelemetry` mantém um relógio compartilhado entre mapa, 3D e painel. Pacotes chegam a cada segundo, com reprodução de 1× ou 20× explicitamente indicada. As rotas são interiores aos polígonos de exemplo, com linhas de trabalho e manobras mais lentas. A falha roteirizada imobiliza a colhedora. O replay define o contexto e as falhas; o relógio ao vivo é uma demonstração hipotética independente, não uma operação histórica observada.
+
+Os marcadores Leaflet são persistentes e interpolados sem reconstruir o mapa. Rastros ficam limitados a 30 pontos. Pausa e troca de contexto cancelam animações; a atualização é suspensa com a aba oculta. O 3D usa o mesmo pacote e redesenha até 30 vezes por segundo enquanto a reprodução está ativa; parado, retorna à renderização sob demanda. A cena usa troncos, ramos e folhas instanciados, evitando uma malha/objeto por árvore e as antigas copas sólidas.
+
+Não há conector real de telemetria nem afirmação de latência, precisão de GPS ou desempenho garantido em hardware específico. A futura ingestão precisa validar os pacotes e lidar com ausência de sinal, ordenação, saltos e expiração das leituras.
+
+### Safra e estoque
+
 - Safra entre 01/09/2025 e 31/08/2026. Datas processadas ao meio-dia UTC, sem dependência do fuso da máquina.
 - Plantio e colheita avançam linearmente em suas janelas, por talhão. Não é um simulador agronômico calibrado.
 - Estádio derivado de idade/ciclo; graus-dia acumulados do clima sintético, limitados até a maturação. A fenologia não é ajustada por um modelo científico.

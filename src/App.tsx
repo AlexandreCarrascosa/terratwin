@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   Activity,
@@ -53,6 +53,9 @@ import {
 } from './model';
 import type { Field, Layer, Section, Snapshot } from './model';
 import { locations } from './geography';
+import { useTelemetry } from './useTelemetry';
+import TelemetryBar, { packetTime } from './TelemetryBar';
+import type { TelemetryFrame } from './telemetry';
 
 const Scene = lazy(() => import('./Scene'));
 const GeoMap = lazy(() => import('./GeoMap'));
@@ -319,13 +322,16 @@ function FleetDetails({
   snapshot,
   selected,
   onSelect,
+  telemetry,
 }: {
   snapshot: Snapshot;
+  telemetry: TelemetryFrame;
   selected: string | null;
   onSelect: (id: string) => void;
 }) {
   const idx = selected?.startsWith('machine-') ? Number(selected.split('-')[1]) : 1;
   const fault = snapshot.fault && idx === 1;
+  const packet = telemetry.packets[idx];
   return (
     <>
       <div className="panel-eyebrow">
@@ -345,12 +351,26 @@ function FleetDetails({
           <span>
             <b>{snapshot.farm.machineIds[i]}</b>
             <small>{name}</small>
-            <em>{snapshot.fault && i === 1 ? 'Em falha' : 'Operacional'}</em>
+            <em>
+              {telemetry.packets[i].status} · {num(telemetry.packets[i].speed, 1)} km/h
+            </em>
           </span>
           <span className={`status-dot ${snapshot.fault && i === 1 ? 'danger' : ''}`} />
         </button>
       ))}
       <div className="detail-block">
+        <h4>Último pacote · {packetTime(packet.timestamp)}</h4>
+        <div className="row">
+          <span>Velocidade informada</span>
+          <b>{num(packet.speed, 1)} km/h</b>
+        </div>
+        <div className="row">
+          <span>Direção</span>
+          <b>{num(packet.heading)}°</b>
+        </div>
+        <div className="telemetry-coordinate">
+          GPS simulado: {packet.position.map((n) => n.toFixed(5)).join(', ')}
+        </div>
         <h4>{snapshot.farm.machineIds[idx]} · diagnóstico</h4>
         <div className="row">
           <span>Horímetro simulado</span>
@@ -675,6 +695,7 @@ export default function App() {
   const mapRef = useRef<HTMLDivElement>(null);
   const date = dateAt(dateIndex);
   const snapshot = useMemo(() => farmSnapshot(farmId, date), [farmId, date]);
+  const telemetry = useTelemetry(snapshot, !!selectedFarmId);
   const alerts = useMemo(
     () => (selectedFarmId ? alertsFor(snapshot) : []),
     [snapshot, selectedFarmId],
@@ -720,12 +741,12 @@ export default function App() {
     const timer = window.setTimeout(() => setNotice(''), 5000);
     return () => window.clearTimeout(timer);
   }, [notice]);
-  const chooseFarm = (id: string) => {
+  const chooseFarm = useCallback((id: string) => {
     setSelectedFarmId(id);
     setSelected(null);
     setSearch('');
     setMode('Mapa');
-  };
+  }, []);
   const overview = () => {
     setSelectedFarmId(null);
     setSelected(null);
@@ -742,12 +763,12 @@ export default function App() {
     setSelected(null);
     setSearch('');
   };
-  const select = (id: string) => {
+  const select = useCallback((id: string) => {
     setSelected(id);
     if (id.includes('-s')) setSection('storage');
     else if (id.startsWith('machine-')) setSection('fleet');
     else setSection('fields');
-  };
+  }, []);
   const openAlert = (id: string, target: Section) => {
     setSection(target);
     setSelected(id === 'heat' ? `${farmId}-s2` : id === 'machine' ? 'machine-1' : id);
@@ -871,7 +892,7 @@ export default function App() {
           <span>Guia da demonstração</span>
         </button>
         <div className="sidebar-bottom">
-          <span className="status-dot" /> Protótipo pessoal <span>v0.2</span>
+          <span className="status-dot" /> Protótipo pessoal <span>v0.3</span>
         </div>
       </aside>
       <div className="main-shell">
@@ -990,6 +1011,15 @@ export default function App() {
               accent
             />
           </div>
+          {selectedFarmId && (
+            <TelemetryBar
+              frame={telemetry.frame}
+              running={telemetry.running}
+              rate={telemetry.rate}
+              onToggle={() => telemetry.setRunning(!telemetry.running)}
+              onRate={telemetry.setRate}
+            />
+          )}
           {section === 'goals' ? (
             <Goals snapshot={snapshot} date={date} />
           ) : (
@@ -1055,6 +1085,8 @@ export default function App() {
                         section={section}
                         selected={selected}
                         snapshot={snapshot}
+                        telemetry={telemetry.frame}
+                        live={telemetry.running}
                         onSelect={select}
                         onFarmSelect={chooseFarm}
                         onOverview={overview}
@@ -1082,6 +1114,8 @@ export default function App() {
                           labels={labels}
                           reset={reset}
                           snapshot={snapshot}
+                          telemetry={telemetry.frame}
+                          live={telemetry.running}
                         />
                       </Suspense>
                       <div className="map-location">
@@ -1308,7 +1342,12 @@ export default function App() {
                   </div>
                 ) : section === 'fleet' ? (
                   <div className="insight-content">
-                    <FleetDetails snapshot={snapshot} selected={selected} onSelect={select} />
+                    <FleetDetails
+                      snapshot={snapshot}
+                      selected={selected}
+                      onSelect={select}
+                      telemetry={telemetry.frame}
+                    />
                   </div>
                 ) : (
                   <>

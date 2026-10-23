@@ -17,7 +17,8 @@
 - **Camadas:** cultura, NDVI, incidência de pragas e colheita.
 - **Uma safra inteira:** replay diário entre 01/09/2025 e 31/08/2026, com atalhos para eventos.
 - **Armazenagem:** saldo por armazém, capacidade livre, quatro silos por fazenda, preenchimento 3D proporcional e ponto quente roteirizado. Soja e milho separados; algodão não entra no estoque de grãos.
-- **Frota:** três máquinas genéricas por fazenda, diagnóstico e ordem corretiva fictícios.
+- **Frota em movimento:** simulação ao vivo com pacotes de posição a cada segundo, rotas em faixas dentro dos talhões, direção, velocidade, rastro dos últimos 30 pontos e pausa. Ritmos de 1× (tempo real) ou 20× (demonstração acelerada). A máquina com falha fica parada. A mesma telemetria alimenta mapa, 3D e detalhes da frota; trocar de visualização preserva o percurso.
+- **Vegetação 3D:** troncos ramificados, copas compostas por folhas individuais e sub-bosque, com porte, cores e distribuição variados. Geometria procedural própria, sem as antigas copas esféricas.
 - **Metas por fazenda:** plantio na janela, colheita concluída e sequência sem ponto quente; comparação proporcional, sem ranking de pessoas.
 - **Acesso alternativo:** mapa Leaflet inclusive no celular e sem WebGL; depois de selecionar a unidade, tabela pesquisável e equivalente de leitura ao 3D, com navegação por teclado.
 - **Exportação:** retrato do talhão em CSV, com indicação de origem simulada.
@@ -81,3 +82,11 @@ O fundo de satélite vem do [EOxCloudless / EOX](https://cloudless.eox.at/docume
 O clima atual opcional usa [Open-Meteo](https://open-meteo.com/), com dados atribuídos sob [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Consulte os termos dos provedores antes de uso comercial ou de grande volume. Mapas e consulta de clima exigem internet; tabela e 3D usam os dados locais distribuídos com a aplicação. Fontes, imagens e dependências usam suas respectivas licenças; consulte [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Código e dados sintéticos sob licença [MIT](LICENSE).
+
+## Simulação de telemetria
+
+O selo **Simulação ao vivo** indica uma demonstração local, sem conexão com máquinas. O ritmo padrão é **20×**, para tornar o deslocamento visível na escala da fazenda; as velocidades indicadas continuam sendo as velocidades físicas simuladas. Escolha **1×** para deslocamento em tempo real. O horário do último pacote usa o fuso America/Cuiaba; ele é separado da data fictícia do replay da safra.
+
+Pausar congela os pacotes e os marcadores. Trocar a unidade ou a data do replay inicia um novo percurso e descarta o rastro anterior. Ocultar os ativos remove marcadores e rastros. Abas em segundo plano suspendem a geração, sem salto no retorno. Com preferência por movimento reduzido, a simulação inicia pausada; ao retomar, o mapa atualiza por pacotes sem interpolação.
+
+`src/telemetry.ts` define os pacotes tipados e o gerador determinístico. `src/useTelemetry.ts` controla o relógio e a reprodução. Integrar WebSocket, SSE ou uma API de fornecedor exigirá um provedor real, validação, tratamento de atrasos e credenciais no backend. O movimento desta versão não representa uma operação real executada na data da safra.

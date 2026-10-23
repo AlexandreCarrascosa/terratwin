@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import type { Layer, Section, Snapshot } from './model';
 import { cropColors, dataset, fieldColor, num } from './model';
-import { basemaps, fieldFootprint, locations, machinePoint, siloPoint, toGeo } from './geography';
+import { basemaps, fieldFootprint, locations, siloPoint, toGeo } from './geography';
+import type { TelemetryFrame } from './telemetry';
 import 'leaflet/dist/leaflet.css';
 
 type Props = {
@@ -26,6 +27,8 @@ type Props = {
   onFarmSelect: (id: string) => void;
   onOverview: () => void;
   on3D: () => void;
+  telemetry: TelemetryFrame;
+  live: boolean;
 };
 
 // Texto dos registros nunca é interpolado como HTML.
@@ -58,7 +61,7 @@ function assetIcon(type: 'silo' | 'machine', danger: boolean, selected: boolean)
     className: 'asset-marker-wrapper',
     iconSize: [29, 29],
     iconAnchor: [14, 14],
-    html: `<div class="asset-marker ${type} ${danger ? 'danger' : ''} ${selected ? 'selected' : ''}"><svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg></div>`,
+    html: `<div class="asset-marker ${type} ${danger ? 'danger' : ''} ${selected ? 'selected' : ''}"><svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg>${type === 'machine' ? '<i class="machine-bearing"><svg viewBox="0 0 24 24"><path d="m12 0-4 6h8z"/></svg></i>' : ''}</div>`,
   });
 }
 
@@ -66,6 +69,13 @@ export default function GeoMap(props: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const overlays = useRef<L.LayerGroup | null>(null);
+  const movingLayer = useRef<L.LayerGroup | null>(null);
+  const movingMarkers = useRef(
+    new Map<
+      number,
+      { marker: L.Marker; track: L.Polyline; points: L.LatLngExpression[]; icon: string }
+    >(),
+  );
   const [base, setBase] = useState<keyof typeof basemaps>('satellite');
   const [opacity, setOpacity] = useState(0.23);
   const [labels, setLabels] = useState(true);
@@ -105,6 +115,7 @@ export default function GeoMap(props: Props) {
     });
     mapRef.current = map;
     overlays.current = L.layerGroup().addTo(map);
+    movingLayer.current = L.layerGroup().addTo(map);
     L.control.zoom({ position: 'topright' }).addTo(map);
     L.control.scale({ position: 'bottomleft', imperial: false }).addTo(map);
     const resize = new ResizeObserver(() => map.invalidateSize({ pan: false }));
@@ -114,6 +125,8 @@ export default function GeoMap(props: Props) {
       map.remove();
       mapRef.current = null;
       overlays.current = null;
+      movingLayer.current = null;
+      movingMarkers.current.clear();
     };
   }, []);
 
@@ -233,19 +246,6 @@ export default function GeoMap(props: Props) {
           .on('click', () => onSelect(s.id))
           .addTo(group),
       );
-      snapshot.farm.machineIds.forEach((id, i) =>
-        L.marker(machinePoint(farmId, i), {
-          icon: assetIcon('machine', snapshot.fault && i === 1, props.selected === `machine-${i}`),
-          title: `Selecionar máquina ${id}`,
-          alt: `Selecionar máquina ${id}`,
-        })
-          .bindTooltip(
-            textLabel(id, `${snapshot.fault && i === 1 ? 'Em falha' : 'Operacional'} · simulado`),
-            { direction: 'top' },
-          )
-          .on('click', () => onSelect(`machine-${i}`))
-          .addTo(group),
-      );
     }
   }, [
     farmId,
@@ -259,6 +259,85 @@ export default function GeoMap(props: Props) {
     onSelect,
     onFarmSelect,
   ]);
+
+  useEffect(() => {
+    const layer = movingLayer.current!;
+    layer.clearLayers();
+    movingMarkers.current.clear();
+    if (!farmId || !assets) return;
+    props.telemetry.packets.forEach((p) => {
+      const marker = L.marker(p.position, {
+        icon: assetIcon('machine', p.status === 'Em falha', false),
+        title: `Selecionar máquina ${p.id}`,
+        alt: `Selecionar máquina ${p.id}`,
+        zIndexOffset: 500,
+      })
+        .bindTooltip(textLabel(p.id, 'Telemetria simulada'), { direction: 'top' })
+        .on('click', () => onSelect(`machine-${p.index}`))
+        .addTo(layer);
+      const track = L.polyline([], {
+        color: p.index === 1 ? '#d8aa78' : '#d4ee9c',
+        weight: 2,
+        opacity: 0.7,
+        interactive: false,
+      }).addTo(layer);
+      movingMarkers.current.set(p.index, { marker, track, points: [], icon: '' });
+    });
+    // Posições são atualizadas abaixo sem destruir marcadores ou perder o foco do teclado.
+  }, [farmId, assets, snapshot.farm.machineIds, snapshot.weather.date, onSelect]);
+
+  useEffect(() => {
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const transitions: { marker: L.Marker; from: L.LatLng; to: L.LatLng }[] = [];
+    props.telemetry.packets.forEach((p) => {
+      const entry = movingMarkers.current.get(p.index);
+      if (!entry) return;
+      const iconKey = `${p.status === 'Em falha'}/${props.selected === `machine-${p.index}`}`;
+      if (entry.icon !== iconKey) {
+        entry.marker.setIcon(
+          assetIcon('machine', p.status === 'Em falha', props.selected === `machine-${p.index}`),
+        );
+        entry.icon = iconKey;
+      }
+      entry.marker.setTooltipContent(
+        textLabel(p.id, `${p.status} · ${num(p.speed, 1)} km/h · ${num(p.heading)}° · simulado`),
+      );
+      const el = entry.marker.getElement();
+      if (el) {
+        el.dataset.machineId = p.id;
+        el.dataset.latitude = String(p.position[0]);
+        el.dataset.longitude = String(p.position[1]);
+        const bearing = el.querySelector<HTMLElement>('.machine-bearing');
+        if (bearing) bearing.style.transform = `rotate(${p.heading}deg)`;
+      }
+      const last = entry.points.at(-1) as [number, number] | undefined;
+      if (!last || last[0] !== p.position[0] || last[1] !== p.position[1]) {
+        entry.points.push(p.position);
+        entry.points = entry.points.slice(-30);
+        entry.track.setLatLngs(entry.points);
+      }
+      if (p.speed === 0 || !props.live || reduced) entry.marker.setLatLng(p.position);
+      else
+        transitions.push({
+          marker: entry.marker,
+          from: entry.marker.getLatLng(),
+          to: L.latLng(p.position),
+        });
+    });
+    let animation = 0;
+    const start = performance.now();
+    const animate = (now: number) => {
+      const t = Math.min(1, (now - start) / 950);
+      for (const item of transitions)
+        item.marker.setLatLng([
+          item.from.lat + (item.to.lat - item.from.lat) * t,
+          item.from.lng + (item.to.lng - item.from.lng) * t,
+        ]);
+      if (t < 1) animation = requestAnimationFrame(animate);
+    };
+    if (transitions.length) animation = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animation);
+  }, [props.telemetry, props.selected, props.live, farmId, assets]);
 
   useEffect(() => {
     const map = mapRef.current!;

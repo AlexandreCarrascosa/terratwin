@@ -56,7 +56,7 @@ test('navega entre eventos, talhão, estoque e frota', async ({ page }) => {
   await expect(page.locator('.temperature-box')).toContainText('DTC DEMO-042');
   await page.getByRole('slider', { name: 'Data da safra' }).focus();
   await page.keyboard.press('End');
-  await expect(page.locator('time')).toHaveText('31 de agosto de 2026');
+  await expect(page.locator('.timeline time')).toHaveText('31 de agosto de 2026');
   await expect(page.locator('.soft-success')).toContainText('Sem falha');
   expect(errors).toEqual([]);
 });
@@ -125,4 +125,38 @@ test('falha na imagem preserva sobreposições e oferece troca de fundo', async 
   await expect(
     page.locator('.geo-basemaps').getByRole('button', { name: 'Mapa', exact: true }),
   ).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('telemetria move o trator, mantém a falha parada e respeita pausa e troca de unidade', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page
+    .getByRole('group', { name: 'Selecionar fazenda' })
+    .getByRole('button', { name: /Fazenda Aurora/ })
+    .click();
+  const moving = page.locator('[data-machine-id="TR-01"]'),
+    stopped = page.locator('[data-machine-id="CL-01"]');
+  await expect(moving).toBeAttached();
+  const initial = await moving.getAttribute('data-longitude'),
+    parked = await stopped.getAttribute('data-longitude');
+  await expect.poll(() => moving.getAttribute('data-longitude')).not.toBe(initial);
+  await expect(stopped).toHaveAttribute('data-longitude', parked!);
+  await moving.press('Enter');
+  await expect(page.locator('.telemetry-coordinate')).toContainText('GPS simulado');
+  await page.getByRole('button', { name: 'Pausar telemetria', exact: true }).click();
+  const paused = await moving.getAttribute('data-longitude');
+  // Congela também quando o relógio de página avança vários pacotes.
+  await page.clock.install();
+  await page.clock.fastForward(4000);
+  await expect(moving).toHaveAttribute('data-longitude', paused!);
+  await page.getByRole('button', { name: 'Retomar telemetria', exact: true }).click();
+  await page.clock.fastForward(2000);
+  await expect(moving).not.toHaveAttribute('data-longitude', paused!);
+  await page
+    .getByRole('group', { name: 'Selecionar fazenda' })
+    .getByRole('button', { name: /Fazenda Veredas/ })
+    .click();
+  await expect(page.locator('[data-machine-id="TR-03"]')).toBeAttached();
+  await expect(page.locator('[data-machine-id="TR-01"]')).toHaveCount(0);
 });

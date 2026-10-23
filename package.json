@@ -1,7 +1,7 @@
 {
   "name": "terratwin",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Gêmeo digital agrícola 3D — demonstração com fazendas e dados fictícios",
   "type": "module",
   "scripts": {

@@ -1,10 +1,12 @@
 import { Component, Suspense, useEffect, useMemo, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { CameraControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { dataset, fieldColor, fieldState } from './model';
 import type { Field, Layer, Section, Snapshot } from './model';
+import Forest from './Forest';
+import type { MachinePacket, TelemetryFrame } from './telemetry';
 
 type Props = {
   farmId: string;
@@ -17,8 +19,21 @@ type Props = {
   labels: boolean;
   reset: number;
   snapshot: Snapshot;
+  telemetry: TelemetryFrame;
+  live: boolean;
 };
 const offsets: Record<string, number> = { aurora: 0, horizonte: 0, veredas: 0 };
+const initialCamera = {
+  position: [130, 155, 155] as [number, number, number],
+  fov: 43,
+  near: 1,
+  far: 1400,
+};
+const rendererOptions = {
+  antialias: true,
+  alpha: false,
+  powerPreference: 'high-performance' as const,
+};
 
 function MapLabel({
   title,
@@ -113,49 +128,6 @@ function texture(seed: number, rows = false) {
   return t;
 }
 
-function Forest({ index }: { index: number }) {
-  const crowns = useRef<THREE.InstancedMesh>(null);
-  const trunks = useRef<THREE.InstancedMesh>(null);
-  useEffect(() => {
-    const obj = new THREE.Object3D();
-    for (let i = 0; i < 190; i++) {
-      const n = Math.sin(i * 127.1 + index * 61.7) * 43758.5453;
-      const rand = n - Math.floor(n);
-      const edge = i % 4;
-      const x = edge < 2 ? (edge === 0 ? -78 : 81) + rand * 20 : -89 + rand * 180;
-      const z = edge < 2 ? -91 + ((i * 17) % 185) : (edge === 2 ? -94 : 87) + rand * 14;
-      const size = 1.6 + rand * 2.2;
-      obj.position.set(x, size + 0.5, z);
-      obj.scale.set(size, size * 1.1, size);
-      obj.rotation.y = i;
-      obj.updateMatrix();
-      crowns.current!.setMatrixAt(i, obj.matrix);
-      crowns.current!.setColorAt(
-        i,
-        new THREE.Color().setHSL(0.23 + rand * 0.09, 0.27, 0.2 + rand * 0.12),
-      );
-      obj.position.set(x, size / 2, z);
-      obj.scale.set(0.38, size, 0.38);
-      obj.updateMatrix();
-      trunks.current!.setMatrixAt(i, obj.matrix);
-    }
-    crowns.current!.instanceMatrix.needsUpdate = true;
-    trunks.current!.instanceMatrix.needsUpdate = true;
-  }, [index]);
-  return (
-    <group>
-      <instancedMesh ref={trunks} args={[undefined, undefined, 190]} castShadow>
-        <cylinderGeometry args={[0.7, 1, 1, 5]} />
-        <meshStandardMaterial color="#625d43" />
-      </instancedMesh>
-      <instancedMesh ref={crowns} args={[undefined, undefined, 190]} castShadow>
-        <icosahedronGeometry args={[1, 1]} />
-        <meshStandardMaterial roughness={1} />
-      </instancedMesh>
-    </group>
-  );
-}
-
 function FieldMesh({
   field,
   date,
@@ -244,20 +216,39 @@ function FieldMesh({
 }
 
 function Machine({
-  position,
+  packet,
   red = false,
   fault = false,
+  live,
   onClick,
 }: {
-  position: [number, number, number];
+  packet: MachinePacket;
   red?: boolean;
   fault?: boolean;
+  live: boolean;
   onClick: () => void;
 }) {
+  const group = useRef<THREE.Group>(null);
+  const initial = useMemo(
+    () => new THREE.Vector3(packet.local[0] / 50, 1, -packet.local[1] / 50),
+    [],
+  );
+  useFrame((_, delta) => {
+    if (!group.current) return;
+    const target = new THREE.Vector3(packet.local[0] / 50, 1, -packet.local[1] / 50);
+    if (fault || !live) group.current.position.copy(target);
+    else group.current.position.lerp(target, 1 - Math.exp(-delta * 7));
+    const targetAngle = (-packet.localHeading * Math.PI) / 180;
+    const diff = Math.atan2(
+      Math.sin(targetAngle - group.current.rotation.y),
+      Math.cos(targetAngle - group.current.rotation.y),
+    );
+    group.current.rotation.y += diff * (1 - Math.exp(-delta * 8));
+  });
   return (
     <group
-      position={position}
-      rotation={[0, -0.5, 0]}
+      ref={group}
+      position={initial}
       onClick={(e) => {
         e.stopPropagation();
         onClick();
@@ -446,14 +437,23 @@ function FarmTerrain({
       )}
       {active && props.machines && (
         <>
-          <Machine position={[-32, 1, -12]} onClick={() => props.onSelect('machine-0')} />
           <Machine
-            position={[-52, 1, -66]}
+            live={props.live}
+            packet={props.telemetry.packets[0]}
+            onClick={() => props.onSelect('machine-0')}
+          />
+          <Machine
+            packet={props.telemetry.packets[1]}
+            live={props.live}
             red
             fault={props.snapshot.fault}
             onClick={() => props.onSelect('machine-1')}
           />
-          <Machine position={[26, 1, 24]} onClick={() => props.onSelect('machine-2')} />
+          <Machine
+            live={props.live}
+            packet={props.telemetry.packets[2]}
+            onClick={() => props.onSelect('machine-2')}
+          />
         </>
       )}
     </group>
@@ -509,6 +509,17 @@ function NoWebGL() {
   );
 }
 
+function LiveFrames({ active }: { active: boolean }) {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => {
+    if (!active) return;
+    const timer = window.setInterval(() => {
+      if (!document.hidden) invalidate();
+    }, 1000 / 30);
+    return () => window.clearInterval(timer);
+  }, [active, invalidate]);
+  return null;
+}
 export default function Scene(props: Props) {
   return (
     <SceneBoundary fallback={<NoWebGL />}>
@@ -516,8 +527,8 @@ export default function Scene(props: Props) {
         frameloop="demand"
         shadows
         dpr={[1, 1.5]}
-        camera={{ position: [130, 155, 155], fov: 43, near: 1, far: 1400 }}
-        gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
+        camera={initialCamera}
+        gl={rendererOptions}
         fallback={<NoWebGL />}
       >
         <color attach="background" args={['#dce5dc']} />
@@ -549,6 +560,7 @@ export default function Scene(props: Props) {
             ))}
         </Suspense>
         <Camera farmId={props.farmId} section={props.section} reset={props.reset} />
+        <LiveFrames active={props.live && props.machines} />
       </Canvas>
     </SceneBoundary>
   );
