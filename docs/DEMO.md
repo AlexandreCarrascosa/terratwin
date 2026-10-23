@@ -2,7 +2,7 @@
 
 ## 1. Onde preciso olhar primeiro? · 3 min
 
-Abra a aplicação na data inicial de demonstração, 12/03/2026. Apresente o selo **DADOS SIMULADOS**, as fazendas fictícias e o terreno procedural. Troque entre Aurora, Horizonte e Veredas para mostrar o voo da câmera e os indicadores por unidade.
+Abra a aplicação na data inicial de demonstração, 12/03/2026. Apresente o selo **DADOS SIMULADOS** e o mapa geral: Aurora e Horizonte em referências regionais de Mato Grosso, Veredas no oeste da Bahia. Nenhuma unidade está selecionada inicialmente; os indicadores são consolidados. Clique no marcador ou cartão de Aurora para aproximar, abrir os detalhes e liberar o botão **Explorar em 3D**. O satélite é real e histórico (2016); talhões e ativos sobrepostos são fictícios. Alterne entre Mapa e 3D; volte ao conjunto com **Todas as unidades**.
 
 Pergunta: “Consigo identificar qual fazenda precisa da minha atenção sem abrir várias planilhas?”
 

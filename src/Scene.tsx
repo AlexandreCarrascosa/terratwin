@@ -18,7 +18,7 @@ type Props = {
   reset: number;
   snapshot: Snapshot;
 };
-const offsets: Record<string, number> = { aurora: 0, horizonte: 245, veredas: -245 };
+const offsets: Record<string, number> = { aurora: 0, horizonte: 0, veredas: 0 };
 
 function MapLabel({
   title,
@@ -367,6 +367,25 @@ function FarmTerrain({
 }) {
   const ground = useMemo(() => texture(42 + index), [index]);
   const rows = useMemo(() => texture(100 + index, true), [index]);
+  const terrain = useMemo(() => {
+    const geometry = new THREE.PlaneGeometry(900, 900, 90, 90);
+    const positions = geometry.attributes.position;
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i),
+        z = positions.getY(i);
+      const edge = THREE.MathUtils.smoothstep(Math.max(Math.abs(x), Math.abs(z)), 95, 270);
+      positions.setZ(
+        i,
+        edge * (7 * Math.sin(x / 85) * Math.cos(z / 110) + 3 * Math.sin((x + z) / 48)),
+      );
+    }
+    geometry.computeVertexNormals();
+    return geometry;
+  }, []);
+  useEffect(() => {
+    ground.repeat.set(28, 28);
+    return () => terrain.dispose();
+  }, [ground, terrain]);
   useEffect(
     () => () => {
       ground.dispose();
@@ -376,8 +395,12 @@ function FarmTerrain({
   );
   return (
     <group position={[offsets[farmId], 0, 0]}>
-      <mesh position={[0, -1.1, 0]} receiveShadow>
-        <boxGeometry args={[216, 2, 216]} />
+      <mesh
+        position={[0, -0.12, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        geometry={terrain}
+        receiveShadow
+      >
         <meshStandardMaterial color="#aab68b" map={ground} roughness={1} />
       </mesh>
       <mesh position={[-7, 0.06, -4]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
@@ -490,6 +513,7 @@ export default function Scene(props: Props) {
   return (
     <SceneBoundary fallback={<NoWebGL />}>
       <Canvas
+        frameloop="demand"
         shadows
         dpr={[1, 1.5]}
         camera={{ position: [130, 155, 155], fov: 43, near: 1, far: 1400 }}
@@ -512,15 +536,17 @@ export default function Scene(props: Props) {
           shadow-bias={-0.001}
         />
         <Suspense fallback={null}>
-          {dataset.farms.map((f, i) => (
-            <FarmTerrain
-              key={f.id}
-              farmId={f.id}
-              index={i}
-              props={props}
-              active={props.farmId === f.id}
-            />
-          ))}
+          {dataset.farms
+            .filter((f) => f.id === props.farmId)
+            .map((f) => (
+              <FarmTerrain
+                key={f.id}
+                farmId={f.id}
+                index={dataset.farms.findIndex((unit) => unit.id === f.id)}
+                props={props}
+                active={props.farmId === f.id}
+              />
+            ))}
         </Suspense>
         <Camera farmId={props.farmId} section={props.section} reset={props.reset} />
       </Canvas>

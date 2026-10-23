@@ -10,6 +10,8 @@ flowchart LR
   J --> M[Modelo TypeScript / retrato por data]
   M --> UI[React / tabelas / indicadores / CSV]
   M --> S[React Three Fiber / cena procedural]
+  T[EOX Sentinel-2 2016 / OpenStreetMap] --> L[Leaflet / mapa geográfico]
+  M --> L
   W[Open-Meteo / consulta opcional] --> C[Cartão regional atual separado]
 ```
 
@@ -25,6 +27,16 @@ flowchart LR
 | `src/styles.css`           | Interface adaptativa, foco visível e redução de movimento                          |
 | `src/model.test.ts`        | Invariantes para todos os dias da safra                                            |
 | `tests/smoke.spec.ts`      | Percursos de interface, celular e exportação                                       |
+
+## Geografia e fluxo de seleção
+
+`src/GeoMap.tsx` integra diretamente Leaflet ao React, com criação e limpeza explícitas do mapa, das camadas, dos eventos e do observador de tamanho. `src/geography.ts` concentra centros de referência, projeção local e configuração dos fundos. Não há wrapper com licença restritiva.
+
+O mapa geral inicia sem unidade selecionada. Os três marcadores correspondem a referências regionais em Nova Mutum/MT, Rondonópolis/MT e Luís Eduardo Magalhães/BA. Os indicadores iniciais são consolidados; escolher um marcador ou cartão libera os detalhes, a tabela e o 3D daquela unidade. “Todas as unidades” retorna ao conjunto e remove a seleção.
+
+As sobreposições são polígonos de exemplo em latitude/longitude, com área preservada pela projeção local. A rotação e os limites são fictícios, não correspondem à segmentação dos terrenos vistos na imagem nem a perímetros cadastrais. O mosaico EOX 2016 é real, histórico, com atribuição e licença CC BY 4.0; não muda com o replay. O 3D permanece uma representação procedural separada, com paisagem contínua, sem DEM real.
+
+O carregamento de mapas é interativo, sem prefetch ou recurso offline. Há troca de fundo e mensagem de indisponibilidade; os testes de interface interceptam tiles externos para não consumir os servidores públicos.
 
 ## Premissas do modelo sintético
 
@@ -43,7 +55,7 @@ As entidades do protótipo são um subconjunto conceitual da visão futura. **N�
 ## Fronteiras para evolução
 
 1. **Contrato de leitura:** extrair a interface de repositório a partir de `farmSnapshot`; manter `id`, fazenda, data, unidade, origem e qualidade para cada leitura. Substituir as fixtures por uma API validada, sem expor tokens ao navegador.
-2. **Geografia real:** obter uma área autorizada, validar CRS, importar GeoJSON/PostGIS e usar DEM e imagens com licença compatível. Os retângulos e coordenadas locais da cena atual precisam ser substituídos; não são georreferenciados. Validar Cesium vs MapLibre/deck.gl/R3F com um recorte pequeno antes de gerar terreno em escala.
+2. **Perímetros e relevo reais:** substituir os polígonos de demonstração por uma área autorizada, validar CRS e importar GeoJSON/PostGIS. O Leaflet já fornece a base geográfica real. Para o 3D geográfico, obter DEM e validar Cesium vs MapLibre/deck.gl/R3F com um recorte pequeno antes de gerar terreno em escala. Não tratar os limites sintéticos como limites da imagem de fundo.
 3. **Clima e NDVI históricos:** cache, proveniência, data de aquisição, máscara de nuvens e apresentação explícita de dados ausentes. A consulta atual do Open-Meteo não serve como histórico da safra.
 4. **Armazém:** leitura EWM por depósito/produto/lote. Fonte separada para nível por silo, com método, data e incerteza. Conciliação dos totais, bloqueio de dupla contagem e rastreabilidade de movimentos.
 5. **Telemetria e termometria:** somente após autorização, prova de conectividade e validação das APIs/CSV dos provedores. Agendamento, limites, renovação OAuth, segredo no servidor e tratamento de dados atrasados.
@@ -52,10 +64,10 @@ As entidades do protótipo são um subconjunto conceitual da visão futura. **N�
 
 ## Desempenho e acessibilidade
 
-A cena 3D é carregada separadamente, usa árvores instanciadas e limita a resolução por pixel. Rótulos e máquinas podem ser ocultados. Nenhum mapa remoto é baixado na abertura. A tabela evita depender de WebGL e oferece o equivalente de leitura aos dados da cena.
+A cena 3D é carregada somente depois de escolher uma unidade e abrir o modo 3D; usa renderização sob demanda, árvores instanciadas e resolução por pixel limitada. Rótulos e máquinas podem ser ocultados. O mapa Leaflet carrega apenas os tiles da área visível e funciona sem WebGL. A tabela oferece o equivalente de leitura aos dados da cena.
 
-As metas de menos de 5 s e 30 fps da visão do produto **não são garantidas**: precisam ser medidas em hardware, rede e volume de dados definidos. O protótipo foi pensado para notebooks com WebGL2; celular inicia pela tabela. Preferência por movimento reduzido evita voos animados; o replay depende de ação do usuário.
+As metas de menos de 5 s e 30 fps da visão do produto **não são garantidas**: precisam ser medidas em hardware, rede e volume de dados definidos. O mapa geral é a entrada também no celular; o 3D requer WebGL2. Preferência por movimento reduzido evita voos animados; o replay depende de ação do usuário.
 
 ## Limites operacionais
 
-Sem conta, persistência, escrita, autorização real, trilha de auditoria ou SLA. O estado de navegação reinicia ao recarregar. Sem service worker ou promessa de operação offline; uma cópia servida localmente funciona sem chamadas externas, exceto a consulta pública opcional de clima. Sem processamento real de shapefile, MIP Excel ou receituário. Não usar como fonte oficial para estoque, manutenção ou decisão agronômica.
+Sem conta, persistência, escrita, autorização real, trilha de auditoria ou SLA. O estado de navegação reinicia ao recarregar. Sem service worker ou promessa de operação offline. O mapa e o clima público precisam de internet; dados, tabela e 3D são distribuídos com a aplicação. Sem processamento real de shapefile, MIP Excel ou receituário. Não usar como fonte oficial para estoque, manutenção ou decisão agronômica.

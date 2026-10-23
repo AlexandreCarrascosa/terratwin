@@ -2628,6 +2628,547 @@ td .pill {
 .nav-item span.nav-mobile {
   display: none;
 }
+
+/* Geographic workspace: Leaflet stays below application controls and dialogs. */
+.geo-map {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  background: #263c31;
+  isolation: isolate;
+}
+.geo-map .leaflet-container {
+  height: 100%;
+  width: 100%;
+  font: inherit;
+  background: #35483a;
+  z-index: 0;
+}
+.geo-map .leaflet-control-attribution {
+  font-size: 8px;
+  max-width: 100%;
+  padding: 4px 7px;
+  background: #ffffffe8;
+  line-height: 1.5;
+}
+.geo-map .leaflet-control-attribution a {
+  color: #526c40;
+}
+.geo-map .leaflet-control-zoom {
+  border: 1px solid #d7e0cf !important;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px #17372820;
+  margin: 16px 14px 0 0;
+}
+.geo-map .leaflet-control-zoom a {
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  color: #557049;
+  font-size: 19px;
+}
+.geo-map .leaflet-control-scale {
+  margin-left: 16px;
+  margin-bottom: 52px;
+}
+.geo-map .leaflet-control-scale-line {
+  background: #ffffffb8;
+  border-color: #687d5b;
+  font-size: 9px;
+}
+.geo-heading {
+  position: absolute;
+  top: 19px;
+  left: 18px;
+  z-index: 500;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #fffde9;
+  text-shadow: 0 1px 5px #000b;
+  max-width: 78%;
+}
+.geo-heading .eyebrow {
+  color: #dce7bb;
+  font-size: 7px;
+}
+.geo-heading > b {
+  font-size: 19px;
+  font-weight: 550;
+  letter-spacing: -0.5px;
+}
+.geo-heading > span:last-child {
+  font-size: 9px;
+  line-height: 1.5;
+}
+.streets .geo-heading {
+  color: #254b34;
+  text-shadow: 0 1px 3px white;
+}
+.streets .geo-heading .eyebrow {
+  color: #63804c;
+}
+.geo-basemaps {
+  position: absolute;
+  top: 100px;
+  left: 18px;
+  display: flex;
+  gap: 3px;
+  z-index: 500;
+  background: #fdfef7f0;
+  border: 1px solid #e4e9d8;
+  padding: 3px;
+  border-radius: 6px;
+  box-shadow: 0 3px 15px #14332318;
+}
+.geo-basemaps button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 8px;
+  border-radius: 4px;
+  color: #889879;
+  font-size: 9px;
+}
+.geo-basemaps button.active {
+  background: #e7efda;
+  color: #466b30;
+}
+.geo-tools {
+  position: absolute;
+  top: 90px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 500;
+}
+.geo-tools button {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #dce5d0;
+  background: #fffffff2;
+  border-radius: 5px;
+  color: #6e8759;
+}
+.geo-unit-actions {
+  position: absolute;
+  bottom: 96px;
+  left: 17px;
+  display: flex;
+  gap: 6px;
+  z-index: 500;
+}
+.geo-unit-actions button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #fffffff2;
+  color: #557244;
+  padding: 9px 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 12px #102b3222;
+  font-size: 9px;
+}
+.geo-unit-actions .primary {
+  background: #d8eaaa;
+  color: #345329;
+}
+.geo-opacity {
+  position: absolute;
+  bottom: 57px;
+  left: 17px;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fffffff0;
+  border: 1px solid #ecf0e4;
+  border-radius: 5px;
+  padding: 9px 10px;
+  color: #788b62;
+  font-size: 8px;
+}
+.geo-opacity input {
+  width: 75px;
+  height: 4px;
+  accent-color: #7e9955;
+}
+.geo-origin {
+  position: absolute;
+  bottom: 32px;
+  left: 17px;
+  z-index: 500;
+  max-width: 80%;
+  font-size: 7px;
+  color: #fffce7;
+  text-shadow: 0 1px 4px #000b;
+  pointer-events: none;
+}
+.streets .geo-origin {
+  color: #506b3c;
+  text-shadow: 0 1px 3px white;
+}
+.geo-select-hint {
+  position: absolute;
+  bottom: 62px;
+  left: 17px;
+  right: 17px;
+  z-index: 500;
+  padding: 12px 14px;
+  background: #faffefee;
+  border: 1px solid #e1eaca;
+  border-radius: 6px;
+  box-shadow: 0 2px 15px #102b3522;
+  color: #6c8155;
+  font-size: 10px;
+  text-align: center;
+}
+.geo-tile-error {
+  position: absolute;
+  left: 17px;
+  right: 17px;
+  bottom: 150px;
+  background: #fff7d9f5;
+  color: #9d7d41;
+  z-index: 600;
+  padding: 11px;
+  border: 1px solid #e8d79f;
+  border-radius: 6px;
+  font-size: 9px;
+  line-height: 1.6;
+}
+.geo-tile-error button {
+  text-decoration: underline;
+  font-size: inherit;
+  padding: 0;
+}
+.geo-crop-legend {
+  position: absolute;
+  bottom: 60px;
+  right: 14px;
+  padding: 8px;
+  background: #ffffffef;
+  border-radius: 5px;
+  z-index: 500;
+  display: flex;
+  gap: 8px;
+}
+.geo-crop-legend span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 7px;
+  color: #7d8f67;
+}
+.geo-crop-legend i {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+}
+.unit-marker-wrapper,
+.asset-marker-wrapper {
+  background: none;
+  border: 0;
+}
+.unit-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 3px;
+  width: 49px;
+  height: 54px;
+  background: #f3f9df;
+  border: 2px solid #d4e7a8;
+  border-radius: 14px 14px 14px 2px;
+  transform: rotate(-45deg);
+  box-shadow: 0 3px 12px #0a2b2944;
+  color: #426735;
+}
+.unit-marker svg {
+  width: 25px;
+  height: 25px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.5;
+  transform: rotate(45deg);
+  margin-top: 2px;
+}
+.unit-marker span {
+  font-size: 8px;
+  font-weight: 650;
+  transform: rotate(45deg);
+  margin-left: 14px;
+}
+.unit-map-tooltip.leaflet-tooltip {
+  background: #fffffff2;
+  border: 1px solid #e6edd7;
+  border-radius: 6px;
+  box-shadow: 0 2px 12px #16342933;
+  padding: 8px 11px;
+  color: #446036;
+  text-align: center;
+}
+.unit-map-tooltip b {
+  display: block;
+  font-size: 11px;
+  font-weight: 550;
+}
+.unit-map-tooltip span {
+  display: block;
+  font-size: 8px;
+  color: #8c9d7c;
+  margin-top: 4px;
+}
+.field-map-tooltip.leaflet-tooltip {
+  background: #183b2ce8;
+  border: 1px solid #e4edc566;
+  border-radius: 4px;
+  padding: 4px 6px;
+  box-shadow: 0 2px 7px #0003;
+  color: #f9ffe9;
+  text-align: center;
+}
+.field-map-tooltip:before {
+  display: none;
+}
+.field-map-tooltip b {
+  display: block;
+  font-size: 9px;
+  font-weight: 600;
+}
+.field-map-tooltip span {
+  display: block;
+  font-size: 7px;
+  color: #d3e3be;
+  margin-top: 2px;
+}
+.field-map-tooltip.selected {
+  background: #e4f1bf;
+  color: #36522b;
+  border-color: #fff4bd;
+}
+.field-map-tooltip.selected span {
+  color: #6e8652;
+}
+.asset-marker {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  background: #eaf1db;
+  border: 1px solid #f4f9e5;
+  border-radius: 6px;
+  color: #617d45;
+  box-shadow: 0 2px 9px #132e3a33;
+}
+.asset-marker svg {
+  width: 19px;
+  height: 19px;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  fill: none;
+}
+.asset-marker.danger {
+  background: #f6d2af;
+  color: #a16436;
+  border-color: #ffe4c4;
+}
+.asset-marker.selected {
+  outline: 2px solid #ffe9a1;
+  outline-offset: 3px;
+}
+.unit-overview-panel {
+  padding: 26px 21px;
+}
+.unit-overview-panel h2 {
+  font-size: 27px;
+  line-height: 1.18;
+  letter-spacing: -1px;
+  margin: 13px 0 15px;
+  color: #526d42;
+}
+.unit-overview-panel > p {
+  font-size: 10px;
+  line-height: 1.9;
+  color: #96a18b;
+}
+.unit-overview-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 17px 0;
+  border-bottom: 1px solid #edf1e4;
+}
+.unit-overview-row b {
+  font-size: 11px;
+  font-weight: 550;
+  display: block;
+}
+.unit-overview-row small {
+  font-size: 8px;
+  color: #9aa78b;
+  display: block;
+  margin-top: 5px;
+}
+.unit-overview-row > svg {
+  margin-left: auto;
+  color: #a5b293;
+}
+.unit-state-tag {
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 34px;
+  background: #edf3e1;
+  border: 1px solid #e5ecd7;
+  border-radius: 5px;
+  font-size: 10px;
+  color: #8aa16d;
+}
+.unit-map-note {
+  display: flex;
+  gap: 11px;
+  padding: 15px 11px;
+  background: #f4f7ec;
+  border: 1px solid #e9eedc;
+  border-radius: 6px;
+  margin-top: 23px;
+  color: #90a179;
+}
+.unit-map-note > svg {
+  flex-shrink: 0;
+}
+.unit-map-note b {
+  font-size: 9px;
+  font-weight: 550;
+}
+.unit-map-note p {
+  font-size: 8px;
+  line-height: 1.9;
+  margin-top: 6px;
+}
+.unit-back-button {
+  font-size: 9px;
+  color: #859b6d;
+  padding: 0;
+  margin: 0 0 15px;
+}
+.nav-item[aria-disabled='true'] {
+  opacity: 0.45;
+}
+button:disabled {
+  cursor: default;
+}
+@media (max-width: 1200px) {
+  .geo-crop-legend {
+    bottom: 135px;
+    right: 12px;
+  }
+  .geo-heading > b {
+    font-size: 17px;
+  }
+}
+@media (max-width: 600px) {
+  .geo-heading {
+    left: 12px;
+    top: 16px;
+    max-width: 78%;
+    gap: 5px;
+  }
+  .geo-heading > b {
+    font-size: 16px;
+  }
+  .geo-heading .eyebrow {
+    font-size: 5px;
+    letter-spacing: 1px;
+  }
+  .geo-heading > span:last-child {
+    font-size: 8px;
+  }
+  .geo-basemaps {
+    left: 12px;
+    top: 96px;
+  }
+  .geo-basemaps button {
+    font-size: 8px;
+    padding: 6px;
+  }
+  .geo-map .leaflet-control-attribution {
+    font-size: 6px;
+    padding: 3px 5px;
+    max-width: 100%;
+  }
+  .geo-select-hint {
+    font-size: 8px;
+    left: 12px;
+    right: 12px;
+    bottom: 65px;
+    padding: 9px;
+  }
+  .geo-unit-actions {
+    left: 12px;
+    bottom: 108px;
+  }
+  .geo-unit-actions button {
+    font-size: 8px;
+    padding: 8px;
+  }
+  .geo-opacity {
+    left: 12px;
+    bottom: 69px;
+    font-size: 7px;
+    gap: 5px;
+    padding: 8px;
+  }
+  .geo-opacity input {
+    width: 53px;
+  }
+  .geo-origin {
+    bottom: 43px;
+    left: 12px;
+    font-size: 6px;
+    max-width: 90%;
+    line-height: 1.5;
+  }
+  .geo-crop-legend {
+    display: none;
+  }
+  .geo-tools {
+    top: 90px;
+    right: 10px;
+  }
+  .unit-map-tooltip b {
+    font-size: 9px;
+  }
+  .unit-map-tooltip span {
+    font-size: 7px;
+  }
+  .unit-overview-panel {
+    padding: 22px 20px;
+  }
+  .unit-overview-panel h2 {
+    font-size: 25px;
+  }
+  .segmented button {
+    font-size: 7px;
+    padding: 4px 5px;
+    gap: 3px;
+  }
+  .segmented button svg {
+    width: 12px;
+  }
+  .map-title h2 {
+    font-size: 10px;
+  }
+}
 @media (max-width: 600px) {
   .nav-item span:not(.nav-mobile) {
     display: none;

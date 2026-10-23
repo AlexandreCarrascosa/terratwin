@@ -52,8 +52,10 @@ import {
   totalDays,
 } from './model';
 import type { Field, Layer, Section, Snapshot } from './model';
+import { locations } from './geography';
 
 const Scene = lazy(() => import('./Scene'));
+const GeoMap = lazy(() => import('./GeoMap'));
 const navigation: { id: Section; title: string; short: string; icon: typeof Map }[] = [
   { id: 'overview', title: 'Visão geral', short: 'Visão geral', icon: Map },
   { id: 'fields', title: 'Talhões e culturas', short: 'Talhões', icon: Sprout },
@@ -655,14 +657,13 @@ function DataTable({
 }
 
 export default function App() {
-  const [farmId, setFarmId] = useState(dataset.farms[0].id);
+  const [selectedFarmId, setSelectedFarmId] = useState<string | null>(null);
+  const farmId = selectedFarmId ?? dataset.farms[0].id;
   const [section, setSection] = useState<Section>('overview');
   const [dateIndex, setDateIndex] = useState(dayDiff(dataset.defaultDate, dataset.startDate));
   const [layer, setLayer] = useState<Layer>('Cultura');
   const [selected, setSelected] = useState<string | null>(null);
-  const [mode, setMode] = useState<'3D' | 'Tabela'>(
-    window.matchMedia('(max-width: 600px)').matches ? 'Tabela' : '3D',
-  );
+  const [mode, setMode] = useState<'Mapa' | '3D' | 'Tabela'>('Mapa');
   const [labels, setLabels] = useState(true);
   const [machines, setMachines] = useState(true);
   const [reset, setReset] = useState(0);
@@ -674,7 +675,30 @@ export default function App() {
   const mapRef = useRef<HTMLDivElement>(null);
   const date = dateAt(dateIndex);
   const snapshot = useMemo(() => farmSnapshot(farmId, date), [farmId, date]);
-  const alerts = useMemo(() => alertsFor(snapshot), [snapshot]);
+  const alerts = useMemo(
+    () => (selectedFarmId ? alertsFor(snapshot) : []),
+    [snapshot, selectedFarmId],
+  );
+  const allSnapshots = useMemo(() => dataset.farms.map((f) => farmSnapshot(f.id, date)), [date]);
+  const scope = selectedFarmId
+    ? snapshot
+    : {
+        area: allSnapshots.reduce((sum, s) => sum + s.area, 0),
+        plantedArea: allSnapshots.reduce((sum, s) => sum + s.plantedArea, 0),
+        harvestedArea: allSnapshots.reduce((sum, s) => sum + s.harvestedArea, 0),
+        stock: allSnapshots.reduce((sum, s) => sum + s.stock, 0),
+        free: allSnapshots.reduce((sum, s) => sum + s.free, 0),
+        capacity: allSnapshots.reduce((sum, s) => sum + s.capacity, 0),
+        get plantedPct() {
+          return this.plantedArea / this.area;
+        },
+        get harvestedPct() {
+          return this.harvestedArea / this.area;
+        },
+        get occupancy() {
+          return this.stock / this.capacity;
+        },
+      };
   const field = dataset.fields.find((f) => f.id === selected);
   useEffect(() => {
     if (!playing) return;
@@ -697,11 +721,23 @@ export default function App() {
     return () => window.clearTimeout(timer);
   }, [notice]);
   const chooseFarm = (id: string) => {
-    setFarmId(id);
+    setSelectedFarmId(id);
     setSelected(null);
+    setSearch('');
+    setMode('Mapa');
+  };
+  const overview = () => {
+    setSelectedFarmId(null);
+    setSelected(null);
+    setSection('overview');
+    setMode('Mapa');
     setSearch('');
   };
   const chooseSection = (id: Section) => {
+    if (!selectedFarmId && id !== 'overview') {
+      setNotice('Selecione uma unidade no mapa para abrir seus detalhes.');
+      return;
+    }
     setSection(id);
     setSelected(null);
     setSearch('');
@@ -808,6 +844,7 @@ export default function App() {
               key={n.id}
               className={`nav-item ${section === n.id ? 'active' : ''}`}
               aria-label={n.title}
+              aria-disabled={!selectedFarmId && n.id !== 'overview'}
               aria-current={section === n.id ? 'page' : undefined}
               onClick={() => chooseSection(n.id)}
             >
@@ -834,7 +871,7 @@ export default function App() {
           <span>Guia da demonstração</span>
         </button>
         <div className="sidebar-bottom">
-          <span className="status-dot" /> Protótipo pessoal <span>v0.1</span>
+          <span className="status-dot" /> Protótipo pessoal <span>v0.2</span>
         </div>
       </aside>
       <div className="main-shell">
@@ -851,6 +888,7 @@ export default function App() {
             </span>
             <button
               className="icon-button notification"
+              disabled={!selectedFarmId}
               aria-label={`Abrir alertas: ${alerts.length}`}
               onClick={() => setAlertModal(true)}
             >
@@ -867,36 +905,46 @@ export default function App() {
             <div>
               <span className="eyebrow">INTELIGÊNCIA TERRITORIAL</span>
               <h1>{sectionTitles[section]}</h1>
-              <p>Decisões mais claras. Do primeiro plantio ao último grão.</p>
+              <p>
+                {selectedFarmId
+                  ? `${snapshot.farm.name} · ${locations[farmId].region}`
+                  : 'Selecione uma unidade no mapa para abrir seus detalhes e o 3D.'}
+              </p>
             </div>
             <button
               className="secondary-button export-button"
               aria-label="Exportar retrato"
+              disabled={!selectedFarmId}
               onClick={exportData}
             >
               <ArrowDownToLine size={16} />
               <span>Exportar retrato</span>
             </button>
           </div>
+          {selectedFarmId && (
+            <button className="unit-back-button" onClick={overview}>
+              ← Todas as unidades · mapa geral
+            </button>
+          )}
           <div className="farm-selector" role="group" aria-label="Selecionar fazenda">
             {dataset.farms.map((f, i) => {
               const s = f.id === farmId ? snapshot : farmSnapshot(f.id, date);
               return (
                 <button
-                  className={`farm-card ${f.id === farmId ? 'active' : ''}`}
+                  className={`farm-card ${f.id === selectedFarmId ? 'active' : ''}`}
                   key={f.id}
                   onClick={() => chooseFarm(f.id)}
-                  aria-pressed={f.id === farmId}
+                  aria-pressed={f.id === selectedFarmId}
                 >
                   <span className={`farm-thumbnail farm-${i}`}>
                     <Sprout size={21} />
                   </span>
                   <span className="farm-name">
                     <b>{f.name}</b>
-                    <small>{f.region} · fictícia</small>
+                    <small>{locations[f.id].region} · demo</small>
                   </span>
                   <span className="farm-card-end">
-                    {f.id === farmId ? (
+                    {f.id === selectedFarmId ? (
                       <span className="checked-circle">
                         <Check size={11} />
                       </span>
@@ -912,30 +960,32 @@ export default function App() {
           <div className="metrics">
             <Metric
               title="Área monitorada"
-              value={num(snapshot.area)}
+              value={num(scope.area)}
               unit="ha"
-              detail="8 talhões · 3 culturas"
+              detail={
+                selectedFarmId ? '8 talhões · 3 culturas' : '3 unidades · 24 talhões · simulado'
+              }
               icon={Sprout}
             />
             <Metric
               title="Plantio realizado"
-              value={num(snapshot.plantedPct * 100)}
+              value={num(scope.plantedPct * 100)}
               unit="%"
-              detail={`${num(snapshot.plantedArea)} ha da área planejada`}
+              detail={`${num(scope.plantedArea)} ha da área planejada`}
               icon={Leaf}
             />
             <Metric
               title="Colheita realizada"
-              value={num(snapshot.harvestedPct * 100)}
+              value={num(scope.harvestedPct * 100)}
               unit="%"
-              detail={`${num(snapshot.harvestedArea)} ha nesta safra`}
+              detail={`${num(scope.harvestedArea)} ha nesta safra`}
               icon={Flag}
             />
             <Metric
               title="Grãos armazenados"
-              value={num(snapshot.stock)}
+              value={num(scope.stock)}
               unit="t"
-              detail={`${num(snapshot.occupancy * 100)}% ocupado · ${num(snapshot.free)} t livres`}
+              detail={`${num(scope.occupancy * 100)}% ocupado · ${num(scope.free)} t livres`}
               icon={Warehouse}
               accent
             />
@@ -949,16 +999,27 @@ export default function App() {
                   <div className="map-title">
                     <span className="live-dot" />
                     <h2>
-                      {section === 'storage'
-                        ? 'Complexo de armazenagem'
-                        : section === 'fleet'
-                          ? 'Operação no campo'
-                          : 'Gêmeo digital'}
+                      {!selectedFarmId
+                        ? 'Mapa das unidades'
+                        : section === 'storage'
+                          ? 'Complexo de armazenagem'
+                          : section === 'fleet'
+                            ? 'Operação no campo'
+                            : 'Gêmeo digital'}
                     </h2>
                     <span className="subtle-tag">EXPLORAR</span>
                   </div>
                   <div className="segmented" aria-label="Visualização">
                     <button
+                      className={mode === 'Mapa' ? 'active' : ''}
+                      onClick={() => setMode('Mapa')}
+                      aria-pressed={mode === 'Mapa'}
+                    >
+                      <Map size={14} />
+                      Mapa
+                    </button>
+                    <button
+                      disabled={!selectedFarmId}
                       className={mode === '3D' ? 'active' : ''}
                       onClick={() => setMode('3D')}
                       aria-pressed={mode === '3D'}
@@ -967,6 +1028,7 @@ export default function App() {
                       3D
                     </button>
                     <button
+                      disabled={!selectedFarmId}
                       className={mode === 'Tabela' ? 'active' : ''}
                       onClick={() => setMode('Tabela')}
                       aria-pressed={mode === 'Tabela'}
@@ -977,7 +1039,29 @@ export default function App() {
                   </div>
                 </div>
                 <div className="map-body" ref={mapRef}>
-                  {mode === '3D' ? (
+                  {mode === 'Mapa' ? (
+                    <Suspense
+                      fallback={
+                        <div className="scene-loading">
+                          <Map size={28} />
+                          <span>Preparando o mapa…</span>
+                        </div>
+                      }
+                    >
+                      <GeoMap
+                        farmId={selectedFarmId}
+                        date={date}
+                        layer={layer}
+                        section={section}
+                        selected={selected}
+                        snapshot={snapshot}
+                        onSelect={select}
+                        onFarmSelect={chooseFarm}
+                        onOverview={overview}
+                        on3D={() => setMode('3D')}
+                      />
+                    </Suspense>
+                  ) : mode === '3D' ? (
                     <>
                       <Suspense
                         fallback={
@@ -1153,11 +1237,12 @@ export default function App() {
                       <button
                         className={layer === l ? 'active' : ''}
                         key={l}
+                        disabled={!selectedFarmId}
                         onClick={() => {
                           setLayer(l);
                           if (mode === 'Tabela')
                             setNotice(
-                              `A coluna ${l === 'Cultura' ? 'Cultura' : l === 'Pragas' ? 'MIP' : l} está disponível na tabela. Abra o modo 3D para ver a camada no mapa.`,
+                              `A coluna ${l === 'Cultura' ? 'Cultura' : l === 'Pragas' ? 'MIP' : l} está disponível na tabela. Abra o mapa para ver a camada espacial.`,
                             );
                         }}
                         aria-pressed={layer === l}
@@ -1169,7 +1254,48 @@ export default function App() {
                 </div>
               </section>
               <aside className="insight-panel" aria-label="Detalhes da operação">
-                {field ? (
+                {!selectedFarmId ? (
+                  <div className="unit-overview-panel">
+                    <span className="eyebrow">COMECE PELO TERRITÓRIO</span>
+                    <h2>
+                      Escolha onde
+                      <br />
+                      quer olhar.
+                    </h2>
+                    <p>
+                      Duas unidades em Mato Grosso e uma no oeste da Bahia. Selecione um marcador
+                      para aproximar a operação.
+                    </p>
+                    {dataset.farms.map((f) => (
+                      <button
+                        className="unit-overview-row"
+                        key={f.id}
+                        onClick={() => chooseFarm(f.id)}
+                      >
+                        <span className="unit-state-tag">{locations[f.id].state}</span>
+                        <span>
+                          <b>{f.name}</b>
+                          <small>{locations[f.id].region}</small>
+                        </span>
+                        <ArrowUpRight size={15} />
+                      </button>
+                    ))}
+                    <div className="unit-map-note">
+                      <Map size={20} />
+                      <div>
+                        <b>Mapa real. Cenário demonstrativo.</b>
+                        <p>
+                          Fundo de satélite público e posições regionais de referência. Talhões,
+                          ativos e operação fictícios.
+                        </p>
+                      </div>
+                    </div>
+                    <p className="source-note">
+                      Os detalhes, a tabela e a visualização 3D são liberados depois de selecionar
+                      uma unidade.
+                    </p>
+                  </div>
+                ) : field ? (
                   <div className="insight-content">
                     <button className="panel-back" onClick={() => setSelected(null)}>
                       ← Todos os talhões
@@ -1338,7 +1464,7 @@ export default function App() {
               TerraTwin · Feito para explorar possibilidades.
             </span>
             <span>
-              Fazendas, terreno e operação fictícios · seed 42
+              Base geográfica real · limites e operação fictícios · seed 42
               <button onClick={() => setHelp(true)}>
                 Fontes e escopo
                 <ArrowUpRight size={12} />
@@ -1407,10 +1533,11 @@ export default function App() {
         <div className="scope-note">
           <b>Sobre os dados e a entrega</b>
           <p>
-            Terreno procedural, limites, NDVI, clima do replay e toda a operação são sintéticos. O
-            clima público atual é opcional e usa o Open-Meteo para uma referência regional em
-            Cuiabá. Não há imagem Sentinel-2, DEM real, login, escrita de dados ou integração
-            corporativa nesta versão.
+            O mapa Leaflet usa mosaico Sentinel-2 EOX de 2016 (CC BY 4.0) ou OpenStreetMap. As
+            posições são referências regionais: duas em MT e uma na BA. Limites, NDVI, clima do
+            replay e toda a operação são sintéticos. O clima público atual é opcional e usa o
+            Open-Meteo para uma referência regional em Cuiabá. O 3D usa relevo procedural, sem DEM
+            real, login, escrita de dados ou integração corporativa nesta versão.
           </p>
           <p>
             Modelos 3D gerados em código e dependências open source. O README contém instalação,
