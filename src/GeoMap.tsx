@@ -74,6 +74,26 @@ export default function GeoMap(props: Props) {
   const [tileError, setTileError] = useState(false);
   const { farmId, snapshot, onSelect, onFarmSelect } = props;
   const background = basemaps[base];
+  const legend =
+    props.layer === 'Cultura'
+      ? Object.entries(cropColors)
+      : props.layer === 'NDVI'
+        ? [
+            ['≤ 0,40', '#cc9b56'],
+            ['0,40–0,65', '#98af4e'],
+            ['> 0,65', '#3d854e'],
+          ]
+        : props.layer === 'Pragas'
+          ? [
+              ['≤ 12%', '#78a183'],
+              ['13–49%', '#c6ae60'],
+              ['Alerta ≥ 50%', '#d1674a'],
+            ]
+          : [
+              ['A colher', '#699070'],
+              ['Em colheita', '#e0c576'],
+              ['Colhido', '#ad874e'],
+            ];
 
   useEffect(() => {
     const map = L.map(container.current!, {
@@ -160,7 +180,9 @@ export default function GeoMap(props: Props) {
               ? f.ndvi.toFixed(2)
               : props.layer === 'Pragas'
                 ? `${f.pest}%`
-                : f.crop,
+                : props.layer === 'Colheita'
+                  ? `${num(f.harvested * 100)}% colhido`
+                  : f.crop,
           ),
           {
             permanent: true,
@@ -364,7 +386,7 @@ export default function GeoMap(props: Props) {
       </div>
       {farmId && (
         <div className="geo-crop-legend">
-          {Object.entries(cropColors).map(([name, color]) => (
+          {legend.map(([name, color]) => (
             <span key={name}>
               <i style={{ background: color }} />
               {name}
