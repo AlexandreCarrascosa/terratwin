@@ -13,6 +13,8 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        // O runner Ubuntu do GitHub já fornece Chrome; evita downloads redundantes.
+        channel: process.env.CI ? 'chrome' : undefined,
         launchOptions: { args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] },
       },
     },

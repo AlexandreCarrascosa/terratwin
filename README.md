@@ -42,7 +42,7 @@ npm run data:generate   # Regenerar fixtures com Python e seed 42
 npm run test:e2e        # Testes de interface com Playwright
 ```
 
-Para os testes de interface, execute uma vez `npx playwright install chromium`. A configuração de testes inicia o servidor automaticamente. Os testes também rodam no GitHub Actions.
+Para os testes de interface locais, execute uma vez `npx playwright install chromium`. A configuração de testes inicia o servidor automaticamente. No GitHub Actions, os mesmos testes usam o Chrome pré-instalado no runner Ubuntu, sem baixar outro navegador.
 
 ## Demonstração em 15 minutos
 

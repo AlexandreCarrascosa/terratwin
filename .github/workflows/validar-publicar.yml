@@ -33,8 +33,6 @@ jobs:
           git diff --exit-code -- src/data/dataset.json
       - run: npm test
       - run: npm run build
-      - name: Instalar navegador de teste
-        run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - uses: actions/upload-pages-artifact@v3
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
