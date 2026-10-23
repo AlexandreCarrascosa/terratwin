@@ -275,6 +275,13 @@ export default function GeoMap(props: Props) {
         .bindTooltip(textLabel(p.id, 'Telemetria simulada'), { direction: 'top' })
         .on('click', () => onSelect(`machine-${p.index}`))
         .addTo(layer);
+      marker.getElement()!.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          event.stopPropagation();
+          onSelect(`machine-${p.index}`);
+        }
+      });
       const track = L.polyline([], {
         color: p.index === 1 ? '#d8aa78' : '#d4ee9c',
         weight: 2,
