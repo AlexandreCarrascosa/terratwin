@@ -869,7 +869,11 @@ export default function App() {
               <h1>{sectionTitles[section]}</h1>
               <p>Decisões mais claras. Do primeiro plantio ao último grão.</p>
             </div>
-            <button className="secondary-button export-button" onClick={exportData}>
+            <button
+              className="secondary-button export-button"
+              aria-label="Exportar retrato"
+              onClick={exportData}
+            >
               <ArrowDownToLine size={16} />
               <span>Exportar retrato</span>
             </button>
